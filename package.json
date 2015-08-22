@@ -1,0 +1,15 @@
+{
+  "name": "event-post-likes",
+  "version": "0.0.1",
+  "description": "Get event posts like count",
+  "scripts": {
+    "fetch": "node fetch/index.js"
+  },
+  "author": "soidid <soidid@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "merge": "^1.2.0",
+    "promise": "^7.0.4",
+    "superagent": "^1.3.0"
+  }
+}
