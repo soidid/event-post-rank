@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "description": "Get event posts like count",
   "scripts": {
-    "fetch": "node fetch/index.js"
+    "fetch": "node fetch/index.js",
+    "parse": "node parse/index.js",
+    "rank": "node fetch/index.js && node parse/index.js"
   },
   "author": "soidid <soidid@gmail.com>",
   "license": "ISC",

@@ -3,7 +3,13 @@ var fs = require('fs'),
 	merge = require('merge'),
 	Promise = require('promise');
 
-fs.readFile("./access_token", "utf-8", function (error, data) {
+// var event_id = "1018717151471773";//父權
+// event_id = "422088457976284";//數學家
+
+var feeds = []; //save all the feeds
+var page_index = 1;
+
+fs.readFile("./config/access_token", "utf-8", function (error, data) {
 	if(error){
         console.log(error);
 		console.log("No Access Token Found.");
@@ -11,80 +17,75 @@ fs.readFile("./access_token", "utf-8", function (error, data) {
 	}
 	access_token = data;
 
+    fs.readFile("./config/event_id", "utf-8", function (error, data) {
+        if(error){
+            console.log(error);
+            console.log("No Event ID Found.");
+            return;
+        }
+        event_id = data;
+    
+        /*
+        https://graph.facebook.com/1018717151471773/feed?summary=true&access_token=CAACEdEose0cBACxZAAgGuhCUTUal0yvLkRhMGQ8nML8SjxV8SOaqPLpa8RMFNv1aMQa8MGMz5v0dVwvBPbOOzl8Lzkc6kYbSZBF1mwSdomLEokGRXag3jJbGa8HfJDyDIgkCsbG0y2ZBaN7ZCNn3A24B5DbgempGAZCz7EKiEoV3sJxQR5yfFkGSybg01LI7NaU377lzf0gZDZD
+        */
+        var url = "https://graph.facebook.com/" + event_id + '/feed';
+        getFeed(url).then(function (d) {
 
-    var posts_id = []; // Save all event posts' id
-    var posts_rank = []; // Save final results (id, message, like_count)
-    
-    
-    //Get posts' id from the event
-    var data = require('./data.json');
-    data.data.map(function(value,index){
-    	var url = value.posts.href;
-    	if(url !== ""){
-    		//improve: use reguar expression?
-    		posts_id.push(url.split('permalink/')[1].split('/')[0]);
-    	}
+            console.log("resolve:"+d);
+        });
     });
-    
-    
-    //Get message and like count
-    posts_id.map(function(value, index){
-
-    	var url = 'https://graph.facebook.com/' + value;
-    	
-    	getLikeCount(url).then(function (d) {
-    
-    		var post = merge(d, {id: value});
-    		//console.log(post);
-    		posts_rank.push(post);
-    
-    		// is last
-    		if(index === posts_id.length - 1){
-    		    posts_rank.sort(function (a, b) {
-    		    	return b.like_count - a.like_count;
-    		    })
-    		    //console.log(posts_rank);
-    		    fs.writeFile("fetch/result.json", JSON.stringify(posts_rank, null, 4), function(err){
-    		    	if(!err) console.log("* succeeded! * File saved as result.json");
-    		    });
-    		}
-    		
-    	})
-    
-    });
-    
-
 });
 
-//var url = 'https://graph.facebook.com/1020351077975047/'
-//Get each posts' message and like count
-function getLikeCount(url){
+function getFeed(url){
 	
 	return new Promise(function(resolve, reject){
         request
-            .get( url + '/likes')
+            .get( url )
             .query({
-            	summary: true,
+                summary: true,
             	access_token: access_token
             })
             .end(function(err, res){
             	if(err){
+                    console.log(err);
             		console.log("error. please check your token.");
             		process.exit();
             	}
-            	var message = "";
-            	var like_count = JSON.parse(res.text).summary.total_count;
-            
-            	request.get( url)
-            	.query({
-            		access_token: access_token
-            	})
-            	.end(function(err, res){
-            		message = JSON.parse(res.text).message;
-            		//console.log(message+": "+like_count);
-            		return err ? reject(err):resolve({ message:message, like_count:like_count});
+
+                res = JSON.parse(res.text);
+                if(res.data.length === 0){
+                    console.log("FETCH FEEDS ENDED.");
+                    console.log("Total posts count: "+feeds.length);
+
+                    fs.writeFile("UpdateTime.text", new Date(), function(err){
+                        if(!err) console.log("-update time");
+                    });
+                    fs.writeFile("fetch/feeds.json", JSON.stringify(feeds, null, 4), function(err){
+                        if(!err) console.log("* succeeded! * File saved as feeds.json");
+                    });
+                    return;
+                }else{
+                    console.log("fetch: page "+ page_index + " - " + res.data.length + " feeds...");
+                    //console.log(res);
+                    res.data.map(function(value,index){
+                       feeds.push(value);
+                    });
+                    
+     
+                    if(!res.paging || (!res.paging.next)){
+                        return;
+                        
+                    }else{
+                        page_index++;
+                        getFeed(res.paging.next);
+                    }
+                
+
+                }
+
+               
             		
-            	});
+            	
             		
             });
 	});
